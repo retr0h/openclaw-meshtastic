@@ -546,8 +546,11 @@ export interface components {
             sent_at: string;
             /** @description signal-to-noise ratio at receive */
             snr?: string;
-            /** @description ok | ack | pending | fail | system | notice */
-            status: string;
+            /**
+             * @description row delivery state. (empty) = inbound chat (no delivery indicator). 'ack' = local radio confirmed transmission — fires within ~1s of send for both broadcasts and DMs (the everyday 'did it leave my radio?' signal). 'pending' = queued locally, ack not yet received. 'fail' = radio rejected the send or the ack timed out. 'system' / 'notice' = synthetic rows the TUI generates for status banners; never persisted to SQLite. For per-peer mesh acks (DMs only), see the 'acks' field.
+             * @enum {string}
+             */
+            status: "" | "ack" | "pending" | "fail" | "system" | "notice";
             /** @description message body, post-sanitization */
             text: string;
             /** @description display timestamp like '09:47' */
@@ -559,7 +562,7 @@ export interface components {
             to_num: number;
         };
         MessageItem: {
-            /** @description child line ('↳ 3 acks — ...') under outgoing messages */
+            /** @description per-peer mesh-relay ack roll-up rendered as '↳ N acks — call1 (1h), call2 (2h)' under outgoing messages. POPULATES FOR DMs ONLY — Meshtastic peers generate Routing replies for unicasts (MeshPacket.to=peer.NodeNum) but not for broadcasts (to=0xFFFFFFFF), so this field stays empty for channel messages even after delivery. The local-radio confirmation is on the 'status' field, which flips to 'ack' for both broadcasts and DMs once the radio sends the packet. */
             acks?: string;
             /** @description leading verb for ham-bang messages */
             bang?: string;
@@ -596,8 +599,11 @@ export interface components {
             sent_at: string;
             /** @description signal-to-noise ratio at receive */
             snr?: string;
-            /** @description ok | ack | pending | fail | system | notice */
-            status: string;
+            /**
+             * @description row delivery state. (empty) = inbound chat (no delivery indicator). 'ack' = local radio confirmed transmission — fires within ~1s of send for both broadcasts and DMs (the everyday 'did it leave my radio?' signal). 'pending' = queued locally, ack not yet received. 'fail' = radio rejected the send or the ack timed out. 'system' / 'notice' = synthetic rows the TUI generates for status banners; never persisted to SQLite. For per-peer mesh acks (DMs only), see the 'acks' field.
+             * @enum {string}
+             */
+            status: "" | "ack" | "pending" | "fail" | "system" | "notice";
             /** @description message body, post-sanitization */
             text: string;
             /** @description display timestamp like '09:47' */
@@ -730,6 +736,10 @@ export interface components {
         };
         Routing: {
             ErrorName: string;
+            /** Format: int64 */
+            FromNum: number;
+            /** Format: int64 */
+            Hops: number;
             OK: boolean;
             Reason: string;
             /** Format: int64 */

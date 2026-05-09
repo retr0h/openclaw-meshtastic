@@ -1,0 +1,63 @@
+{
+  "name": "openclaw-meshtastic",
+  "version": "0.1.0",
+  "description": "OpenClaw plugin: read from and write to a Meshtastic LoRa radio via the meshx HTTP+SSE daemon.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "openclaw": {
+    "extensions": ["./dist/index.js"],
+    "compat": {
+      "pluginApi": ">=2026.5.0",
+      "minGatewayVersion": "2026.5.0"
+    },
+    "build": {
+      "openclawVersion": "2026.5.5",
+      "pluginSdkVersion": "2026.5.5"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "meshtastic",
+    "lora",
+    "ham",
+    "mesh-network",
+    "meshx"
+  ],
+  "author": "John Dewey <john@dewey.ws>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/retr0h/openclaw-meshtastic.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@sinclair/typebox": "^0.34.0",
+    "openclaw": ">=2026.5.0",
+    "typescript": "^5.6.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.0"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "id": "meshtastic",
+  "name": "Meshtastic",
+  "description": "Read from and write to a Meshtastic LoRa radio via the meshx HTTP+SSE daemon. Lets the agent list radios, list mesh peers, read recent messages, send a message, and probe daemon health.",
+  "version": "0.1.0",
+  "contracts": {
+    "tools": [
+      "meshtastic_health",
+      "meshtastic_list_radios",
+      "meshtastic_get_radio",
+      "meshtastic_list_channels",
+      "meshtastic_list_nodes",
+      "meshtastic_recent_messages",
+      "meshtastic_send_message"
+    ]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "format": "uri",
+        "default": "http://127.0.0.1:4404",
+        "description": "Base URL of the meshx daemon (host:port). Defaults to the daemon's own default bind address."
+      },
+      "defaultRadioId": {
+        "type": ["string", "null"],
+        "default": null,
+        "description": "Optional: radio_id to use when a tool call omits one. If null, tools require radio_id explicitly (unless exactly one radio is attached)."
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "minimum": 250,
+        "maximum": 60000,
+        "default": 5000,
+        "description": "Per-request HTTP timeout in milliseconds."
+      },
+      "userAgent": {
+        "type": "string",
+        "default": "openclaw-meshtastic/0.1.0",
+        "description": "User-Agent header sent with every request to the meshx daemon."
+      }
+    }
+  }
+}

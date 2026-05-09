@@ -1,7 +1,7 @@
 {
   "id": "meshtastic",
   "name": "Meshtastic",
-  "description": "Read from and write to a Meshtastic LoRa radio via the meshx HTTP+SSE daemon. Lets the agent list radios, list mesh peers, read recent messages, send a message, and probe daemon health.",
+  "description": "Read from and write to a Meshtastic LoRa radio via the meshx HTTP+SSE daemon. Requires a running meshx daemon (https://github.com/retr0h/meshx). Lets the agent list radios, list mesh peers, read recent messages, send a message, and probe daemon health.",
   "version": "0.1.0",
   "contracts": {
     "tools": [

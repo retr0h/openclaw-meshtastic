@@ -8,6 +8,53 @@ list peers, read recent chat, and (with intent) send a message. Pair it with
 the meshx daemon running on a Mac mini, Raspberry Pi, or any always-on host
 that owns the radio.
 
+## ⚠️ Requires meshx
+
+This plugin **does not talk to a radio directly** — it is a thin HTTP client
+for the [meshx](https://github.com/retr0h/meshx) daemon. You must have meshx
+installed and running before this plugin will do anything useful. Without a
+running daemon every tool returns a connection error.
+
+### Install meshx
+
+```bash
+curl -fsSL https://github.com/retr0h/meshx/raw/main/install.sh | sh
+```
+
+Installs to `~/.local/bin`. See the
+[meshx README](https://github.com/retr0h/meshx#-install) for source builds and
+version pinning.
+
+### Start the daemon
+
+```bash
+# attach a USB-serial radio (most common)
+meshx server start --radio /dev/cu.usbserial-…
+
+# attach a Bluetooth LE radio (must already be paired with `meshx ble pair`)
+meshx server start --radio ble:<uuid>
+
+# attach a TCP radio (meshtasticd / WiFi-bridged)
+meshx server start --radio host:4403
+
+# no radio — daemon serves the API surface but exposes 0 radios
+meshx server start
+```
+
+Default bind: `127.0.0.1:4404`. The plugin's `baseUrl` defaults match.
+
+For long-lived deployments, wrap the daemon in `launchd` (macOS),
+`systemd` (Linux), or your supervisor of choice so it survives reboots.
+
+### Verify before installing the plugin
+
+```bash
+curl -s http://127.0.0.1:4404/healthz
+# → {"status":"ok"}
+```
+
+Once that works, proceed to the plugin install below.
+
 ## Architecture
 
 ```
@@ -52,7 +99,9 @@ For per-radio tools, the `radio_id` argument is **optional**:
 3. Otherwise auto-pick the only attached radio.
 4. Otherwise return a friendly error listing the available radios.
 
-## Install
+## Install the plugin
+
+> Make sure the meshx daemon is running first (see above).
 
 ### From source (local development)
 
@@ -72,6 +121,17 @@ openclaw plugins install clawhub:openclaw-meshtastic
 openclaw gateway restart
 ```
 
+### First sanity check
+
+Ask your agent to call `meshtastic_health`. Expected:
+
+```json
+{ "status": "ok" }
+```
+
+If you see a connection error, the daemon isn't reachable at `baseUrl` —
+start it and try again.
+
 ## Configure
 
 In your OpenClaw config (`openclaw.json` / `openclaw config.patch`), under
@@ -87,28 +147,6 @@ In your OpenClaw config (`openclaw.json` / `openclaw config.patch`), under
 ```
 
 All fields are optional; the defaults above are used when omitted.
-
-## Running the daemon
-
-This plugin requires a running meshx daemon. The meshx project documents the
-flag surface, but the short version is:
-
-```bash
-# no radio attached — daemon serves the API and 0 radios
-meshx server start --bind 127.0.0.1:4404
-
-# attach a USB-serial radio
-meshx server start --radio /dev/cu.usbserial-…
-
-# attach a TCP radio (meshtasticd / WiFi-bridged)
-meshx server start --radio host:4403
-
-# attach a Bluetooth LE radio (must already be paired)
-meshx server start --radio ble:<uuid>
-```
-
-For long-lived deployments, wrap the daemon in `launchd` (macOS),
-`systemd` (Linux), or your supervisor of choice.
 
 ## Verifying the plugin
 

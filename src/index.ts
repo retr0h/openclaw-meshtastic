@@ -303,18 +303,18 @@ const SendMessageSchema = Type.Object(
       description:
         "Message body. Meshtastic packets cap at ~228 bytes after encoding; longer text will be rejected by the daemon.",
     }),
-    channel_index: Type.Optional(
+    channel: Type.Integer({
+      minimum: 0,
+      maximum: 7,
+      default: 0,
+      description:
+        "Channel slot index (0-7). Required by the daemon — defaults to 0 (PRIMARY) when omitted by the caller. Use meshtastic_list_channels to see the slot table.",
+    }),
+    reply_id: Type.Optional(
       Type.Integer({
         minimum: 0,
-        maximum: 7,
         description:
-          "Channel slot index (0-7). Defaults to channel 0 (PRIMARY) if omitted. Use meshtastic_list_channels to see the slot table.",
-      }),
-    ),
-    to: Type.Optional(
-      Type.String({
-        description:
-          "Optional destination node id (e.g. '!a1b2c3d4'). Omit to broadcast on the channel.",
+          "Optional MeshPacket.id this message replies to. Use the packet_id from a row returned by meshtastic_recent_messages.",
       }),
     ),
   },
@@ -333,12 +333,12 @@ function createSendMessageTool(api: OpenClawPluginApi): AnyAgentTool {
         const params = raw as Static<typeof SendMessageSchema>;
         const client = buildClient(api);
         const radioId = await resolveRadioId(client, api, params.radio_id);
-        const body: SendMessageRequest = { text: params.text };
-        if (typeof params.channel_index === "number") {
-          body.channel_index = params.channel_index;
-        }
-        if (typeof params.to === "string" && params.to.length > 0) {
-          body.to = params.to;
+        const body: SendMessageRequest = {
+          text: params.text,
+          channel: typeof params.channel === "number" ? params.channel : 0,
+        };
+        if (typeof params.reply_id === "number") {
+          body.reply_id = params.reply_id;
         }
         return jsonResult(await client.sendMessage(radioId, body));
       } catch (err) {

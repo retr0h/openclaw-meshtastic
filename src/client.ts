@@ -1,9 +1,33 @@
-// Thin typed HTTP client for the meshx daemon.
+// Typed HTTP client for the meshx daemon, driven by its OpenAPI 3.1 spec.
 //
-// Only covers what the plugin's tools need; the daemon's full surface is in
-// /openapi.json and is mirrored by meshx's own internal/sdk/gen/ Go client.
-// We intentionally keep this client small and fetch-based so the plugin has
-// zero runtime dependencies beyond Node 22+.
+// The spec lives at `openapi/meshx.openapi.json` and is regenerated into
+// `src/openapi.gen.ts` via `npm run gen:types`. We use `openapi-fetch` for a
+// small (no-codegen) typed wrapper around `fetch`. Refreshing types when a
+// new meshx release ships is one command — no hand-maintained shapes, no
+// drift.
+
+import createClient, { type Client } from "openapi-fetch";
+
+import type { paths, components } from "./openapi.gen.js";
+
+// Re-export the spec-derived component schemas so the plugin entry can
+// stay loosely coupled — callers see nice short names without importing
+// the full openapi-fetch type machinery.
+export type RadioSummary = components["schemas"]["RadioSummary"];
+export type ListRadiosOutputBody =
+  components["schemas"]["ListRadiosOutputBody"];
+export type SessionSnapshot = components["schemas"]["SessionSnapshot"];
+export type ChannelItem = components["schemas"]["ChannelItem"];
+export type ListChannelsOutputBody =
+  components["schemas"]["ListChannelsOutputBody"];
+export type NodeItem = components["schemas"]["NodeItem"];
+export type ListNodesOutputBody = components["schemas"]["ListNodesOutputBody"];
+export type MessageItem = components["schemas"]["MessageItem"];
+export type ListMessagesOutputBody =
+  components["schemas"]["ListMessagesOutputBody"];
+export type SendMessageRequest = components["schemas"]["SendMessageRequest"];
+export type SendMessageResult = components["schemas"]["SendMessageResult"];
+export type HealthOutputBody = components["schemas"]["HealthOutputBody"];
 
 export interface MeshxClientOptions {
   baseUrl: string;
@@ -11,6 +35,12 @@ export interface MeshxClientOptions {
   userAgent: string;
 }
 
+/**
+ * Thrown when the daemon returns a non-2xx response, the request times out,
+ * or the network call fails. Wraps the underlying status / URL / body so
+ * callers (and the plugin's tool wrappers) can surface a useful error
+ * message back to the agent.
+ */
 export class MeshxRequestError extends Error {
   constructor(
     public readonly status: number,
@@ -23,110 +53,126 @@ export class MeshxRequestError extends Error {
   }
 }
 
+/**
+ * Public client used by the plugin's tool wrappers. Method names are stable;
+ * the implementation under each method is OpenAPI-driven.
+ */
 export class MeshxClient {
-  constructor(private readonly opts: MeshxClientOptions) {}
+  private readonly raw: Client<paths>;
+  private readonly opts: MeshxClientOptions;
+
+  constructor(opts: MeshxClientOptions) {
+    this.opts = opts;
+    this.raw = createClient<paths>({
+      baseUrl: opts.baseUrl.replace(/\/+$/, ""),
+      headers: {
+        accept: "application/json",
+        "user-agent": opts.userAgent,
+      },
+    });
+  }
 
   // --- meta -----------------------------------------------------------------
 
-  health(): Promise<{ status: string }> {
-    return this.get<{ status: string }>("/healthz");
+  health(): Promise<HealthOutputBody> {
+    return this.call("GET", "/healthz", {});
   }
 
   // --- radios ---------------------------------------------------------------
 
   listRadios(): Promise<ListRadiosOutputBody> {
-    return this.get<ListRadiosOutputBody>("/radios");
+    return this.call("GET", "/radios", {});
   }
 
   getRadio(radioId: string): Promise<SessionSnapshot> {
-    return this.get<SessionSnapshot>(`/radios/${encodeURIComponent(radioId)}`);
+    return this.call("GET", "/radios/{radio_id}", {
+      params: { path: { radio_id: radioId } },
+    });
   }
 
   // --- per-radio resources --------------------------------------------------
 
   listChannels(radioId: string): Promise<ListChannelsOutputBody> {
-    return this.get<ListChannelsOutputBody>(
-      `/radios/${encodeURIComponent(radioId)}/channels`,
-    );
+    return this.call("GET", "/radios/{radio_id}/channels", {
+      params: { path: { radio_id: radioId } },
+    });
   }
 
   listNodes(radioId: string): Promise<ListNodesOutputBody> {
-    return this.get<ListNodesOutputBody>(
-      `/radios/${encodeURIComponent(radioId)}/nodes`,
-    );
+    return this.call("GET", "/radios/{radio_id}/nodes", {
+      params: { path: { radio_id: radioId } },
+    });
   }
 
   listMessages(
     radioId: string,
     limit?: number,
   ): Promise<ListMessagesOutputBody> {
-    const path =
-      `/radios/${encodeURIComponent(radioId)}/messages` +
-      (typeof limit === "number" ? `?limit=${limit}` : "");
-    return this.get<ListMessagesOutputBody>(path);
+    return this.call("GET", "/radios/{radio_id}/messages", {
+      params: {
+        path: { radio_id: radioId },
+        ...(typeof limit === "number" ? { query: { limit } } : {}),
+      },
+    });
   }
 
   sendMessage(
     radioId: string,
     body: SendMessageRequest,
   ): Promise<SendMessageResult> {
-    return this.post<SendMessageResult>(
-      `/radios/${encodeURIComponent(radioId)}/messages`,
+    return this.call("POST", "/radios/{radio_id}/messages", {
+      params: { path: { radio_id: radioId } },
       body,
-    );
+    });
   }
 
   // --- internals ------------------------------------------------------------
 
-  private async get<T>(path: string): Promise<T> {
-    return this.request<T>("GET", path);
-  }
-
-  private async post<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>("POST", path, body);
-  }
-
-  private async request<T>(
+  /**
+   * Single dispatch point that:
+   *   - applies our per-request AbortController timeout
+   *   - normalizes openapi-fetch's `{ data, error, response }` envelope into
+   *     either a resolved typed payload or a thrown MeshxRequestError
+   *   - converts AbortError + network failures into MeshxRequestError(0)
+   *
+   * The `as any` here is unavoidable: openapi-fetch's per-method overloads
+   * resolve to different `init` shapes for each path/method combo, and TS
+   * can't narrow that through a generic helper. The `Method` + `Path` type
+   * params keep the call sites typed; only the dispatch is dynamic.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async call<TResp>(
     method: "GET" | "POST",
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
-    const url = this.opts.baseUrl.replace(/\/+$/, "") + path;
+    path: keyof paths,
+    init: any,
+  ): Promise<TResp> {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.opts.timeoutMs);
+    const url = `${this.opts.baseUrl.replace(/\/+$/, "")}${String(path)}`;
     try {
-      const res = await fetch(url, {
-        method,
-        signal: ctrl.signal,
-        headers: {
-          accept: "application/json",
-          "user-agent": this.opts.userAgent,
-          ...(body !== undefined ? { "content-type": "application/json" } : {}),
-        },
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      });
-
-      const text = await res.text();
-      let parsed: unknown = null;
-      if (text.length > 0) {
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          // leave parsed as the raw text in the error path below
-          parsed = text;
-        }
-      }
-
-      if (!res.ok) {
-        const detail = extractErrorMessage(parsed) ?? res.statusText;
+      const fn =
+        method === "GET"
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (this.raw.GET as any)
+          : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (this.raw.POST as any);
+      const result = await fn(path, { ...init, signal: ctrl.signal });
+      const { data, error, response } = result as {
+        data?: TResp;
+        error?: unknown;
+        response: Response;
+      };
+      if (error !== undefined) {
         throw new MeshxRequestError(
-          res.status,
-          url,
-          parsed,
-          `${method} ${path} failed: ${res.status} ${detail}`,
+          response.status,
+          response.url,
+          error,
+          `${method} ${String(path)} failed: ${response.status} ${
+            extractErrorMessage(error) ?? response.statusText
+          }`,
         );
       }
-      return parsed as T;
+      return data as TResp;
     } catch (err) {
       if (err instanceof MeshxRequestError) throw err;
       if ((err as { name?: string })?.name === "AbortError") {
@@ -134,14 +180,14 @@ export class MeshxClient {
           0,
           url,
           null,
-          `${method} ${path} timed out after ${this.opts.timeoutMs}ms`,
+          `${method} ${String(path)} timed out after ${this.opts.timeoutMs}ms`,
         );
       }
       throw new MeshxRequestError(
         0,
         url,
         null,
-        `${method} ${path} failed: ${(err as Error).message}`,
+        `${method} ${String(path)} failed: ${(err as Error).message}`,
       );
     } finally {
       clearTimeout(timer);
@@ -156,89 +202,4 @@ function extractErrorMessage(body: unknown): string | null {
   if (typeof b.title === "string") return b.title;
   if (typeof b.message === "string") return b.message;
   return null;
-}
-
-// --- minimal type mirrors of the daemon's OpenAPI shapes ---------------------
-// Matches /openapi.json (v0.1.0). We only declare fields the plugin actually
-// surfaces; extra fields from the daemon are preserved in JSON output but not
-// statically typed.
-
-export interface RadioSummary {
-  radio_id: string;
-  connection_status: string;
-  dest?: string;
-  short_name?: string;
-  long_name?: string;
-  hw_model?: string;
-  firmware?: string;
-  [k: string]: unknown;
-}
-
-export interface ListRadiosOutputBody {
-  radios: RadioSummary[];
-}
-
-export interface SessionSnapshot {
-  radio_id: string;
-  connection_status: string;
-  [k: string]: unknown;
-}
-
-export interface ChannelItem {
-  index: number;
-  name: string;
-  role?: string;
-  has_psk?: boolean;
-  [k: string]: unknown;
-}
-
-export interface ListChannelsOutputBody {
-  channels: ChannelItem[];
-}
-
-export interface NodeItem {
-  node_num: number;
-  short_name?: string;
-  long_name?: string;
-  last_snr?: number;
-  last_rssi?: number;
-  last_hops?: number;
-  last_heard?: string;
-  online?: boolean;
-  [k: string]: unknown;
-}
-
-export interface ListNodesOutputBody {
-  nodes: NodeItem[];
-}
-
-export interface MessageItem {
-  id?: string;
-  packet_id?: number;
-  channel_index?: number;
-  channel?: string;
-  from?: string;
-  from_node_num?: number;
-  to?: string;
-  text?: string;
-  time?: string;
-  status?: string;
-  ack?: boolean;
-  [k: string]: unknown;
-}
-
-export interface ListMessagesOutputBody {
-  messages: MessageItem[];
-}
-
-export interface SendMessageRequest {
-  text: string;
-  channel_index?: number;
-  to?: string;
-}
-
-export interface SendMessageResult {
-  packet_id?: number;
-  status?: string;
-  [k: string]: unknown;
 }

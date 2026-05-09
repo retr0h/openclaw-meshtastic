@@ -19,7 +19,9 @@
     "LICENSE"
   ],
   "openclaw": {
-    "extensions": ["./dist/index.js"],
+    "extensions": [
+      "./dist/index.js"
+    ],
     "compat": {
       "pluginApi": ">=2026.5.0",
       "minGatewayVersion": "2026.5.0"
@@ -30,6 +32,7 @@
     }
   },
   "scripts": {
+    "gen:types": "openapi-typescript openapi/meshx.openapi.json -o src/openapi.gen.ts",
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
     "prepare": "npm run build"
@@ -54,10 +57,14 @@
   },
   "devDependencies": {
     "@sinclair/typebox": "^0.34.0",
+    "openapi-typescript": "^7.13.0",
     "openclaw": ">=2026.5.0",
     "typescript": "^5.6.0"
   },
   "peerDependencies": {
     "openclaw": ">=2026.5.0"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
   }
 }

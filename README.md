@@ -25,39 +25,29 @@ This plugin does not talk to a radio directly — it connects to the
 # install meshx
 curl -fsSL https://github.com/retr0h/meshx/raw/main/install.sh | sh
 
-# start the daemon with a radio attached
-meshx server start --radio /dev/cu.usbserial-…    # USB
-meshx server start --radio ble:<uuid>              # Bluetooth LE
-meshx server start --radio host:4403               # TCP / WiFi
-
-# verify
-curl -s http://127.0.0.1:4404/healthz
-# → {"status":"ok"}
+# start the daemon — the agent handles radio lifecycle
+# (scan, pair, attach) via MCP tools
+meshx server start
 ```
+
+No `--radio` flag needed at startup. The agent discovers and attaches
+radios at runtime through `scan_ble`, `scan_usb`, `pair_ble`, and the
+rest of the BLE/USB tool surface.
 
 ## 🏗️ Architecture
 
-```
-        radio (USB / TCP / BLE)
-               │
-        ┌──────▼──────┐
-        │   meshx     │   long-lived daemon — owns the radio
-        │   daemon    │
-        └──────┬──────┘
-               │
-        ┌──────▼──────────┐
-        │  meshx mcp      │   stdio MCP server (26 tools + events)
-        │  start           │
-        └──────┬──────────┘
-               │  JSON-RPC / stdio
-        ┌──────▼──────────────┐
-        │ openclaw-meshtastic │   MCP connector (this plugin)
-        └──────┬──────────────┘
-               │
-        ┌──────▼──────┐
-        │  OpenClaw   │
-        │    agent    │
-        └─────────────┘
+```mermaid
+flowchart TB
+    R["📡 Radio\n(USB / TCP / BLE)"]
+    D["meshx daemon\nmeshx server start"]
+    M["meshx MCP server\nmeshx mcp start\n(26 tools + events)"]
+    P["openclaw-meshtastic\n(MCP connector)"]
+    A["OpenClaw agent"]
+
+    R --> D
+    D -- HTTP + SSE --> M
+    M -- "JSON-RPC / stdio" --> P
+    P --> A
 ```
 
 ## 🔧 Tools (26)

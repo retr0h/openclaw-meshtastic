@@ -97,9 +97,7 @@ The bundle ships `.mcp.json` — embedded Pi spawns
 
 ```bash
 git clone https://github.com/retr0h/openclaw-meshtastic.git
-cd openclaw-meshtastic
-npm install && npm run build
-openclaw plugins install .
+openclaw plugins install ./openclaw-meshtastic
 openclaw gateway restart
 ```
 
@@ -124,15 +122,10 @@ Defaults: `http://127.0.0.1:4404`, no auth (loopback).
 
 ### Plugin bundle (Option 2 / 3)
 
-In `openclaw.json` under `plugins.entries.meshtastic.config`:
-
-```jsonc
-{
-  "baseUrl": "http://127.0.0.1:4404",
-  "defaultRadioId": null,
-  "timeoutMs": 5000
-}
-```
+No additional config needed — the `.mcp.json` in the bundle root
+tells OpenClaw how to spawn the MCP server. Override the daemon URL
+or auth token via env in the bundle settings if the daemon isn't on
+localhost.
 
 ## 📚 Docs
 

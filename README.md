@@ -48,6 +48,20 @@ flowchart TB
     P --> A
 ```
 
+This repository is configuration only. There is no application code and no build
+step, so nothing compiles and there is no `node_modules`.
+
+| File                       | Purpose                                    |
+| -------------------------- | ------------------------------------------ |
+| `.mcp.json`                | Tells OpenClaw to spawn `meshx mcp start`  |
+| `openclaw.plugin.json`     | ClawHub bundle manifest                    |
+| `package.json`             | npm metadata (no deps, no build)           |
+| `docs/design-mcp-pivot.md` | Architecture notes from the HTTP→MCP pivot |
+
+Tools, their implementations and the OpenAPI spec they come from all live in
+meshx. Do not add TypeScript tools, a copy of the spec, or runtime dependencies
+here.
+
 ## 🔧 Tools (26)
 
 Auto-generated from the daemon's OpenAPI spec. When meshx adds an HTTP endpoint
@@ -122,6 +136,14 @@ Defaults: `http://127.0.0.1:4404`, no auth (loopback).
 No additional config needed — the `.mcp.json` in the bundle root tells OpenClaw
 how to spawn the MCP server. Override the daemon URL or auth token via env in
 the bundle settings if the daemon isn't on localhost.
+
+## 🛠️ Development
+
+`just test` checks the formatting of the justfile and every markdown file.
+`just ready` fixes it. Run `just fetch` once first to download the shared
+recipes. Commits follow
+[Conventional Commits](https://www.conventionalcommits.org), with the same rules
+as [meshx](https://github.com/retr0h/meshx/blob/main/docs/contributing.md).
 
 ## 📚 Docs
 

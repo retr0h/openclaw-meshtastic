@@ -1,0 +1,13 @@
+---
+github/action:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**/*.yml"
+
+kind/docs:
+  - changed-files:
+      - any-glob-to-any-file: "docs/**"
+      - any-glob-to-any-file: "**/*.md"
+
+kind/json:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.json"

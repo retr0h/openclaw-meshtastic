@@ -9,12 +9,10 @@
 📡 OpenClaw plugin for Meshtastic LoRa mesh radios via
 [meshx](https://github.com/retr0h/meshx).
 
-Connects your OpenClaw agent to the mesh — send messages, manage
-channels, scan for radios, ping peers, subscribe to live events.
-meshx ships a native
-[MCP server](https://github.com/retr0h/meshx#-claude-code--mcp)
-with 26 auto-generated tools; this plugin tells OpenClaw how to
-spawn it.
+Connects your OpenClaw agent to the mesh — send messages, manage channels, scan
+for radios, ping peers, subscribe to live events. meshx ships a native
+[MCP server](https://github.com/retr0h/meshx#-claude-code--mcp) with 26
+auto-generated tools; this plugin tells OpenClaw how to spawn it.
 
 ## ⚠️ Requires meshx
 
@@ -30,9 +28,9 @@ curl -fsSL https://github.com/retr0h/meshx/raw/main/install.sh | sh
 meshx server start
 ```
 
-No `--radio` flag needed at startup. The agent discovers and attaches
-radios at runtime through `scan_ble`, `scan_usb`, `pair_ble`, and the
-rest of the BLE/USB tool surface.
+No `--radio` flag needed at startup. The agent discovers and attaches radios at
+runtime through `scan_ble`, `scan_usb`, `pair_ble`, and the rest of the BLE/USB
+tool surface.
 
 ## 🏗️ Architecture
 
@@ -52,24 +50,23 @@ flowchart TB
 
 ## 🔧 Tools (26)
 
-Auto-generated from the daemon's OpenAPI spec. When meshx adds an
-HTTP endpoint and runs `just generate`, the matching MCP tool
-appears.
+Auto-generated from the daemon's OpenAPI spec. When meshx adds an HTTP endpoint
+and runs `just generate`, the matching MCP tool appears.
 
-| Category | Tools |
-|---|---|
-| Discovery | `health`, `list_radios`, `get_radio` |
-| Mesh state | `list_channels`, `list_nodes`, `list_messages` |
-| Messaging | `send_message` (broadcast + DM via `to_num`) |
-| Channels | `mint_channel`, `import_channels`, `delete_channel`, `share_channel` |
-| Config | `update_config`, `reboot_radio` |
-| Radio ops | `ping_peer`, `traceroute_peer`, `sync_radio` |
-| BLE / USB | `scan_ble`, `scan_usb`, `auto_detect_usb`, `pair_ble`, `list_ble_devices`, `forget_ble_device`, `set_ble_favorite`, `clear_ble_favorite` |
-| Events | `subscribe_events`, `unsubscribe_events` |
+| Category   | Tools                                                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Discovery  | `health`, `list_radios`, `get_radio`                                                                                                     |
+| Mesh state | `list_channels`, `list_nodes`, `list_messages`                                                                                           |
+| Messaging  | `send_message` (broadcast + DM via `to_num`)                                                                                             |
+| Channels   | `mint_channel`, `import_channels`, `delete_channel`, `share_channel`                                                                     |
+| Config     | `update_config`, `reboot_radio`                                                                                                          |
+| Radio ops  | `ping_peer`, `traceroute_peer`, `sync_radio`                                                                                             |
+| BLE / USB  | `scan_ble`, `scan_usb`, `auto_detect_usb`, `pair_ble`, `list_ble_devices`, `forget_ble_device`, `set_ble_favorite`, `clear_ble_favorite` |
+| Events     | `subscribe_events`, `unsubscribe_events`                                                                                                 |
 
-Event subscriptions push live radio events (messages, ack/fail,
-peer sightings) as MCP Log notifications — no polling. Per-radio
-or unified (all radios). Resumable via `since` cursor.
+Event subscriptions push live radio events (messages, ack/fail, peer sightings)
+as MCP Log notifications — no polling. Per-radio or unified (all radios).
+Resumable via `since` cursor.
 
 ## 📦 Install
 
@@ -90,8 +87,8 @@ openclaw plugins install clawhub:openclaw-meshtastic
 openclaw gateway restart
 ```
 
-The bundle ships `.mcp.json` — embedded Pi spawns
-`meshx mcp start` when the bundle is enabled.
+The bundle ships `.mcp.json` — embedded Pi spawns `meshx mcp start` when the
+bundle is enabled.
 
 ### Option 3 — from source
 
@@ -122,15 +119,16 @@ Defaults: `http://127.0.0.1:4404`, no auth (loopback).
 
 ### Plugin bundle (Option 2 / 3)
 
-No additional config needed — the `.mcp.json` in the bundle root
-tells OpenClaw how to spawn the MCP server. Override the daemon URL
-or auth token via env in the bundle settings if the daemon isn't on
-localhost.
+No additional config needed — the `.mcp.json` in the bundle root tells OpenClaw
+how to spawn the MCP server. Override the daemon URL or auth token via env in
+the bundle settings if the daemon isn't on localhost.
 
 ## 📚 Docs
 
-- [meshx docs](https://github.com/retr0h/meshx/tree/main/docs) — daemon setup, keybindings, architecture
-- [meshx configuration](https://github.com/retr0h/meshx/blob/main/docs/configuration.md) — every flag / env / default
+- [meshx docs](https://github.com/retr0h/meshx/tree/main/docs) — daemon setup,
+  keybindings, architecture
+- [meshx configuration](https://github.com/retr0h/meshx/blob/main/docs/configuration.md)
+  — every flag / env / default
 - [MCP pivot design](docs/design-mcp-pivot.md) — original architecture notes
 
 ## 📄 License

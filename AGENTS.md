@@ -1,34 +1,35 @@
-# Agent Instructions
+# AGENTS.md
 
-Canonical guidance for any AI coding agent (Claude Code, Cursor, Aider, ...)
-working in this repository.
+Test: `just test` | Before committing: `just ready`
 
-## Project shape
+Read [README.md](README.md) first. It covers what the plugin is, how it reaches
+meshx, the files in the repository and what does not belong in it, installing
+and configuring it, the checks, and commit conventions. All of it applies to
+agents exactly as it applies to people. This file carries only what is specific
+to agents.
 
-- **MCP connector only.** This plugin ships `.mcp.json` + `openclaw.plugin.json`
-  — no application code. meshx's native MCP server (`meshx mcp start`) provides
-  the 26 tools; this repo tells OpenClaw how to spawn it.
-- **No build step.** No TypeScript, no compilation, no `node_modules`. Install
-  is `openclaw plugins install .` or `openclaw mcp set`.
-- **Conventional Commits.** Same rules as
-  [meshx](https://github.com/retr0h/meshx/blob/main/docs/contributing.md).
+## Running tools
 
-## Key files
+Invoke tools through `mise`, not from your path:
 
-| File                       | Purpose                                    |
-| -------------------------- | ------------------------------------------ |
-| `.mcp.json`                | Tells OpenClaw to spawn `meshx mcp start`  |
-| `openclaw.plugin.json`     | ClawHub bundle manifest                    |
-| `package.json`             | npm metadata (no deps, no build)           |
-| `docs/design-mcp-pivot.md` | Architecture notes from the HTTP→MCP pivot |
+```bash
+mise exec -- just test
+```
 
-## What NOT to do
+`mise` is active in a person's shell and supplies the versions `.mise.toml`
+declares. An agent's shell has no activation, so a bare `just` resolves to
+whatever is installed globally, usually an older version.
 
-- Don't add TypeScript tools — meshx's MCP server owns the tool surface.
-- Don't vendor the OpenAPI spec — mcpgen reads it server-side.
-- Don't add runtime dependencies — this is a config-only plugin.
+The symptom is a check that fails here and passes in continuous integration, on
+a file nobody edited. When that happens, establish which version ran before
+treating the failure as real.
 
-## Related repos
+## Commit trailer
 
-- [meshx](https://github.com/retr0h/meshx) — the daemon + MCP server this plugin
-  connects to. All tool implementations live there.
+When committing via Claude Code, end the message with:
+
+```
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
